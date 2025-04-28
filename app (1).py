@@ -17,7 +17,7 @@ st.set_page_config(
 page_bg_img = """
 <style>
 [data-testid="stAppViewContainer"] {
-background-image: url("https://images.unsplash.com/photo-1590402494682-0c3b8d4e1f4a");
+background-image: url("https://images.app.goo.gl/ZJd8wn4BbntiCSTD7");
 background-size: cover;
 background-repeat: no-repeat;
 background-position: center;

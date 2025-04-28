@@ -1,49 +1,79 @@
-
 import streamlit as st
 import cv2
 import numpy as np
-from tensorflow.keras.models import load_model
+import tensorflow as tf
+from tensorflow import keras
+from PIL import Image
 
-# Set page config
-st.set_page_config(page_title="Sign Language Translator", page_icon="🤟")
+# --- Page Configuration ---
+st.set_page_config(
+    page_title="Sign Language Translator",
+    page_icon="🤟",
+    layout="centered",
+    initial_sidebar_state="expanded"
+)
 
-st.title("🤟 Sign Language Recognition")
-st.write("Upload an image or use your webcam to predict the sign language letter!")
+# --- Custom Background (Optional) ---
+page_bg_img = """
+<style>
+[data-testid="stAppViewContainer"] {
+background-image: url("https://images.unsplash.com/photo-1590402494682-0c3b8d4e1f4a");
+background-size: cover;
+background-repeat: no-repeat;
+background-position: center;
+}
+</style>
+"""
+st.markdown(page_bg_img, unsafe_allow_html=True)
 
-@st.cache_resource
-def load_model_once():
-    model = load_model('model_new.h5')
+# --- Sidebar Info ---
+st.sidebar.title("About This App")
+st.sidebar.info(
+    "This app translates Sign Language gestures into English text using a CNN model! 📚✨"
+)
+
+# --- Main Heading ---
+st.title("🤟 Sign Language to Text Translator")
+
+st.markdown(
+    """
+    Welcome to the **Sign Language Translator**!  
+    Upload your gesture image below and click Translate! 🎯
+    """
+)
+
+# --- Load Trained Model ---
+@st.cache(allow_output_mutation=True)
+def load_model():
+    model = keras.models.load_model('model_new.h5')
     return model
 
-model = load_model_once()
+model = load_model()
 
-labels = {i: chr(65+i) for i in range(26)}
+# --- Upload Image Section ---
+uploaded_file = st.file_uploader("Upload an Image", type=['jpg', 'png', 'jpeg'])
 
-uploaded_file = st.file_uploader("Choose an image file (JPG/PNG) or use camera input", type=["jpg", "jpeg", "png"])
-use_camera = st.checkbox("Use webcam to capture image")
+# --- Prediction Function ---
+def predict_image(img):
+    img = img.resize((64, 64))  # Adjust according to your model input
+    img = np.array(img)
+    img = img / 255.0
+    img = img.reshape(1, 64, 64, 3)
+    prediction = model.predict(img)
+    predicted_class = np.argmax(prediction, axis=1)
+    return predicted_class[0]
 
-if use_camera:
-    picture = st.camera_input("Take a picture")
-    if picture:
-        file_bytes = np.asarray(bytearray(picture.read()), dtype=np.uint8)
-        img = cv2.imdecode(file_bytes, 1)
-else:
-    if uploaded_file is not None:
-        file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
-        img = cv2.imdecode(file_bytes, 1)
+# --- After Upload ---
+if uploaded_file is not None:
+    image = Image.open(uploaded_file)
+    st.image(image, caption='Uploaded Image', use_column_width=True)
 
-if (uploaded_file is not None) or (use_camera and picture):
-    with st.spinner('Predicting...'):
-        img_resized = cv2.resize(img, (64, 64))
-        img_resized = img_resized / 255.0
-        img_resized = np.expand_dims(img_resized, axis=0)
+    if st.button('Translate Sign'):
+        with st.spinner('Translating... please wait 🌀'):
+            result = predict_image(image)
+            st.success(f"Predicted Class: **{result}**")
 
-        prediction = model.predict(img_resized)
-        predicted_class = np.argmax(prediction, axis=1)[0]
-        predicted_label = labels.get(predicted_class, 'Unknown')
+# --- Footer ---
+st.markdown("---")
+st.caption("Made with ❤️ by YourName")
 
-        st.image(img, caption=f"Prediction: {predicted_label}", use_column_width=True)
-        st.success(f"The predicted sign language letter is: {predicted_label}")
-
-st.sidebar.title("About")
-st.sidebar.info("This app uses CNN to recognize American Sign Language (ASL) letters. Created with ❤️ using Streamlit.")
